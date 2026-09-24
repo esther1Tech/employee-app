@@ -96,9 +96,9 @@ jobs:
           command: |
             echo "Deploying to $EC2_USER@$EC2_HOST"
 
-            # Write SSH key from environment variable (base64 encoded)
+            # Write SSH key from environment variable
             mkdir -p ~/.ssh
-            echo "$EC2_SSH_KEY" | tr -d ' \n\r' | base64 -d > ~/.ssh/deploy_key.pem
+            printf "%b" "$EC2_SSH_KEY" > ~/.ssh/deploy_key.pem
             chmod 600 ~/.ssh/deploy_key.pem
 
             cat > /tmp/deploy.sh \<<SCRIPT
