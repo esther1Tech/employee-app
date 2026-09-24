@@ -346,3 +346,5 @@ curl http://<NODE_EXTERNAL_IP>:30500/api/health
 | `PUT`  | `/api/employees/<id>` | Update employee |
 | `DELETE` | `/api/employees/<id>` | Delete employee |
 | `GET`  | `/api/health` | Health check |
+
+CI/CD development pipeline verification - Sep 20 2026
