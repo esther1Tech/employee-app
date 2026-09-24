@@ -126,6 +126,8 @@ jobs:
             ENDDEPLOY
 
             echo "Connecting as: $EC2_USER@$EC2_HOST"
+            echo "Key line count: $(wc -l < ~/.ssh/deploy_key.pem)"
+            ssh -vv -o StrictHostKeyChecking=no -i ~/.ssh/deploy_key.pem "$EC2_USER"@"$EC2_HOST" "echo connected" || true
             scp -o StrictHostKeyChecking=no -i ~/.ssh/deploy_key.pem /tmp/deploy.sh "$EC2_USER"@"$EC2_HOST":/tmp/deploy.sh
             ssh -o StrictHostKeyChecking=no -i ~/.ssh/deploy_key.pem "$EC2_USER"@"$EC2_HOST" \
               "AWS_REGION=$AWS_REGION ECR_REGISTRY=$ECR_REGISTRY BACKEND_TAG=$BACKEND_TAG FRONTEND_TAG=$FRONTEND_TAG bash /tmp/deploy.sh"
