@@ -92,6 +92,12 @@ jobs:
             echo "export BACKEND_TAG=$(cat /tmp/backend_tag)" >> $BASH_ENV
             echo "export FRONTEND_TAG=$(cat /tmp/frontend_tag)" >> $BASH_ENV
       - run:
+          name: Debug env vars
+          command: |
+            echo "EC2_SSH_KEY length: ${#EC2_SSH_KEY}"
+            echo "EC2_HOST set: ${EC2_HOST:+yes}"
+            echo "EC2_USER set: ${EC2_USER:+yes}"
+      - run:
           name: Deploy to EC2
           command: |
             # Write SSH key — handles literal \n stored in CircleCI env var
