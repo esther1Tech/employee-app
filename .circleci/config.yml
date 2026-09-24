@@ -95,11 +95,16 @@ jobs:
           name: Deploy to EC2
           command: |
             echo "Deploying to $EC2_USER@$EC2_HOST"
+            echo "EC2_USER is: ${EC2_USER}"
+            echo "EC2_HOST is: ${EC2_HOST}"
 
             # Write SSH key from environment variable
             mkdir -p ~/.ssh
             printf "%b" "$EC2_SSH_KEY" > ~/.ssh/deploy_key.pem
             chmod 600 ~/.ssh/deploy_key.pem
+
+            TARGET_USER="${EC2_USER:-ec2-user}"
+            TARGET_HOST="${EC2_HOST}"
 
             cat > /tmp/deploy.sh \<<SCRIPT
             aws ecr get-login-password --region ${AWS_REGION} | docker login --username AWS --password-stdin ${ECR_REGISTRY}
@@ -116,8 +121,8 @@ jobs:
             docker run -d --name frontend --restart unless-stopped --network employee-network -p 8080:80 ${ECR_REGISTRY}/employee-frontend:${FRONTEND_TAG}
             docker image prune -f
             SCRIPT
-            scp -o StrictHostKeyChecking=no -i ~/.ssh/deploy_key.pem /tmp/deploy.sh $EC2_USER@$EC2_HOST:/tmp/deploy.sh
-            ssh -o StrictHostKeyChecking=no -i ~/.ssh/deploy_key.pem $EC2_USER@$EC2_HOST "bash /tmp/deploy.sh"
+            scp -o StrictHostKeyChecking=no -i ~/.ssh/deploy_key.pem /tmp/deploy.sh ${TARGET_USER}@${TARGET_HOST}:/tmp/deploy.sh
+            ssh -o StrictHostKeyChecking=no -i ~/.ssh/deploy_key.pem ${TARGET_USER}@${TARGET_HOST} "bash /tmp/deploy.sh"
 
 # ── Workflows ──────────────────────────────────────────────────────────────────
 workflows:
