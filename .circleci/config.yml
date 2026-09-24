@@ -91,17 +91,15 @@ jobs:
           command: |
             echo "export BACKEND_TAG=$(cat /tmp/backend_tag)" >> $BASH_ENV
             echo "export FRONTEND_TAG=$(cat /tmp/frontend_tag)" >> $BASH_ENV
-      - add_ssh_keys:
-          fingerprints:
-            - "SHA256:SNp9UP/nvWcxbFT5m41UoXREk5L2ZfsG4muLf/2zo9o"
       - run:
           name: Deploy to EC2
           command: |
             echo "Deploying to $EC2_USER@$EC2_HOST"
-            echo "SSH files available:"
-            ls -la ~/.ssh/
-            SSH_KEY=$(ls ~/.ssh/id_rsa* 2>/dev/null | head -1)
-            echo "Using SSH key: $SSH_KEY"
+
+            # Write SSH key from environment variable
+            mkdir -p ~/.ssh
+            echo "$EC2_SSH_KEY" > ~/.ssh/deploy_key.pem
+            chmod 600 ~/.ssh/deploy_key.pem
 
             cat > /tmp/deploy.sh \<<SCRIPT
             aws ecr get-login-password --region ${AWS_REGION} | docker login --username AWS --password-stdin ${ECR_REGISTRY}
@@ -118,8 +116,8 @@ jobs:
             docker run -d --name frontend --restart unless-stopped --network employee-network -p 8080:80 ${ECR_REGISTRY}/employee-frontend:${FRONTEND_TAG}
             docker image prune -f
             SCRIPT
-            scp -o StrictHostKeyChecking=no -i "$SSH_KEY" /tmp/deploy.sh $EC2_USER@$EC2_HOST:/tmp/deploy.sh
-            ssh -o StrictHostKeyChecking=no -i "$SSH_KEY" $EC2_USER@$EC2_HOST "bash /tmp/deploy.sh"
+            scp -o StrictHostKeyChecking=no -i ~/.ssh/deploy_key.pem /tmp/deploy.sh $EC2_USER@$EC2_HOST:/tmp/deploy.sh
+            ssh -o StrictHostKeyChecking=no -i ~/.ssh/deploy_key.pem $EC2_USER@$EC2_HOST "bash /tmp/deploy.sh"
 
 # ── Workflows ──────────────────────────────────────────────────────────────────
 workflows:
