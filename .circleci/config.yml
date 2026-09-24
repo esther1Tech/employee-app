@@ -94,35 +94,39 @@ jobs:
       - run:
           name: Deploy to EC2
           command: |
-            echo "Deploying to $EC2_USER@$EC2_HOST"
-            echo "EC2_USER is: ${EC2_USER}"
-            echo "EC2_HOST is: ${EC2_HOST}"
-
             # Write SSH key from environment variable
             mkdir -p ~/.ssh
             printf "%b" "$EC2_SSH_KEY" > ~/.ssh/deploy_key.pem
             chmod 600 ~/.ssh/deploy_key.pem
 
-            TARGET_USER="${EC2_USER:-ec2-user}"
-            TARGET_HOST="${EC2_HOST}"
-
-            cat > /tmp/deploy.sh \<<SCRIPT
-            aws ecr get-login-password --region ${AWS_REGION} | docker login --username AWS --password-stdin ${ECR_REGISTRY}
+            # Write deploy script to file without heredoc
+            cat > /tmp/deploy.sh << 'ENDDEPLOY'
+            #!/bin/bash
+            set -euo pipefail
+            aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin $ECR_REGISTRY
             docker network inspect employee-network >/dev/null 2>&1 || docker network create employee-network
             if ! docker ps --format '{{.Names}}' | grep -q '^db$'; then
               docker rm -f db || true
-              docker run -d --name db --restart unless-stopped --network employee-network -e POSTGRES_USER=postgres -e POSTGRES_PASSWORD=postgres -e POSTGRES_DB=employees -v postgres-data:/var/lib/postgresql/data postgres:15
+              docker run -d --name db --restart unless-stopped --network employee-network \
+                -e POSTGRES_USER=postgres -e POSTGRES_PASSWORD=postgres -e POSTGRES_DB=employees \
+                -v postgres-data:/var/lib/postgresql/data postgres:15
               until docker exec db pg_isready -U postgres; do sleep 2; done
             fi
-            docker pull ${ECR_REGISTRY}/employee-backend:${BACKEND_TAG}
-            docker pull ${ECR_REGISTRY}/employee-frontend:${FRONTEND_TAG}
+            docker pull $ECR_REGISTRY/employee-backend:$BACKEND_TAG
+            docker pull $ECR_REGISTRY/employee-frontend:$FRONTEND_TAG
             docker rm -f backend frontend || true
-            docker run -d --name backend --restart unless-stopped --network employee-network -p 5000:5000 -e DATABASE_URL=postgresql://postgres:postgres@db:5432/employees ${ECR_REGISTRY}/employee-backend:${BACKEND_TAG}
-            docker run -d --name frontend --restart unless-stopped --network employee-network -p 8080:80 ${ECR_REGISTRY}/employee-frontend:${FRONTEND_TAG}
+            docker run -d --name backend --restart unless-stopped --network employee-network \
+              -p 5000:5000 -e DATABASE_URL=postgresql://postgres:postgres@db:5432/employees \
+              $ECR_REGISTRY/employee-backend:$BACKEND_TAG
+            docker run -d --name frontend --restart unless-stopped --network employee-network \
+              -p 8080:80 $ECR_REGISTRY/employee-frontend:$FRONTEND_TAG
             docker image prune -f
-            SCRIPT
-            scp -o StrictHostKeyChecking=no -i ~/.ssh/deploy_key.pem /tmp/deploy.sh ${TARGET_USER}@${TARGET_HOST}:/tmp/deploy.sh
-            ssh -o StrictHostKeyChecking=no -i ~/.ssh/deploy_key.pem ${TARGET_USER}@${TARGET_HOST} "bash /tmp/deploy.sh"
+            ENDDEPLOY
+
+            echo "Connecting as: $EC2_USER@$EC2_HOST"
+            scp -o StrictHostKeyChecking=no -i ~/.ssh/deploy_key.pem /tmp/deploy.sh "$EC2_USER"@"$EC2_HOST":/tmp/deploy.sh
+            ssh -o StrictHostKeyChecking=no -i ~/.ssh/deploy_key.pem "$EC2_USER"@"$EC2_HOST" \
+              "AWS_REGION=$AWS_REGION ECR_REGISTRY=$ECR_REGISTRY BACKEND_TAG=$BACKEND_TAG FRONTEND_TAG=$FRONTEND_TAG bash /tmp/deploy.sh"
 
 # ── Workflows ──────────────────────────────────────────────────────────────────
 workflows:
