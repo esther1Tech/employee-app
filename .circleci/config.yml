@@ -96,7 +96,7 @@ jobs:
           command: |
             # Write SSH key from environment variable
             mkdir -p ~/.ssh
-            python3 -c "import os,sys; k=os.environ['EC2_SSH_KEY']; k=k.replace('\\n','\n') if '\\n' in k and '\n' not in k else k; k=k+'\n' if not k.endswith('\n') else k; open(os.path.expanduser('~/.ssh/deploy_key.pem'),'w').write(k); print('lines:',k.count('\n'))"
+            echo "$EC2_SSH_KEY" | tr -d '\r' > ~/.ssh/deploy_key.pem
             chmod 600 ~/.ssh/deploy_key.pem
             head -1 ~/.ssh/deploy_key.pem
             tail -1 ~/.ssh/deploy_key.pem
