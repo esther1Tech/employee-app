@@ -94,20 +94,16 @@ jobs:
       - run:
           name: Deploy to EC2
           command: |
-            # Write SSH key from environment variable
+            # Write SSH key — decode from base64
             mkdir -p ~/.ssh
-            echo "$EC2_SSH_KEY" | tr -d '\r' | sed 's/\\n/\n/g' > ~/.ssh/deploy_key.pem
-            # If still one line, the key uses literal \n — convert them
-            if [ "$(wc -l < ~/.ssh/deploy_key.pem)" -le 1 ]; then
-              printf '%s' "$EC2_SSH_KEY" | sed 's/\\n/\n/g' > ~/.ssh/deploy_key.pem
-            fi
+            echo "$EC2_SSH_KEY" | base64 -d > ~/.ssh/deploy_key.pem
             chmod 600 ~/.ssh/deploy_key.pem
             echo "Key line count: $(wc -l < ~/.ssh/deploy_key.pem)"
             head -1 ~/.ssh/deploy_key.pem
             tail -1 ~/.ssh/deploy_key.pem
 
-            # Write deploy script to file without heredoc
-            cat > /tmp/deploy.sh \<< 'ENDDEPLOY'
+            # Write deploy script
+            cat > /tmp/deploy.sh << 'ENDDEPLOY'
             #!/bin/bash
             set -euo pipefail
             aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin $ECR_REGISTRY
@@ -131,10 +127,9 @@ jobs:
             ENDDEPLOY
 
             echo "Connecting as: $EC2_USER@$EC2_HOST"
-            echo "Key line count: $(wc -l < ~/.ssh/deploy_key.pem)"
-            ssh -vv -o StrictHostKeyChecking=no -o IdentitiesOnly=yes -o IdentityAgent=none -i ~/.ssh/deploy_key.pem "$EC2_USER"@"$EC2_HOST" "echo connected" || true
-            scp -o StrictHostKeyChecking=no -o IdentitiesOnly=yes -o IdentityAgent=none -i ~/.ssh/deploy_key.pem /tmp/deploy.sh "$EC2_USER"@"$EC2_HOST":/tmp/deploy.sh
-            ssh -o StrictHostKeyChecking=no -o IdentitiesOnly=yes -o IdentityAgent=none -i ~/.ssh/deploy_key.pem "$EC2_USER"@"$EC2_HOST" \
+            ssh -o StrictHostKeyChecking=no -i ~/.ssh/deploy_key.pem "$EC2_USER"@"$EC2_HOST" "echo connected"
+            scp -o StrictHostKeyChecking=no -i ~/.ssh/deploy_key.pem /tmp/deploy.sh "$EC2_USER"@"$EC2_HOST":/tmp/deploy.sh
+            ssh -o StrictHostKeyChecking=no -i ~/.ssh/deploy_key.pem "$EC2_USER"@"$EC2_HOST" \
               "AWS_REGION=$AWS_REGION ECR_REGISTRY=$ECR_REGISTRY BACKEND_TAG=$BACKEND_TAG FRONTEND_TAG=$FRONTEND_TAG bash /tmp/deploy.sh"
 
 # ── Workflows ──────────────────────────────────────────────────────────────────
