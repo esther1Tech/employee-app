@@ -100,7 +100,7 @@ jobs:
             chmod 600 ~/.ssh/deploy_key.pem
 
             # Write deploy script to file without heredoc
-            cat > /tmp/deploy.sh << 'ENDDEPLOY'
+            cat > /tmp/deploy.sh \<< 'ENDDEPLOY'
             #!/bin/bash
             set -euo pipefail
             aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin $ECR_REGISTRY
