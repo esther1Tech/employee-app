@@ -96,19 +96,7 @@ jobs:
           command: |
             # Write SSH key from environment variable
             mkdir -p ~/.ssh
-            python3 -c "
-import os
-key = os.environ['EC2_SSH_KEY']
-# Handle both literal \n and actual newlines
-if '\\n' in key and '\n' not in key:
-    key = key.replace('\\n', '\n')
-# Ensure trailing newline
-if not key.endswith('\n'):
-    key += '\n'
-with open(os.path.expanduser('~/.ssh/deploy_key.pem'), 'w') as f:
-    f.write(key)
-print('Key written, lines:', key.count('\n'))
-"
+            python3 -c "import os,sys; k=os.environ['EC2_SSH_KEY']; k=k.replace('\\n','\n') if '\\n' in k and '\n' not in k else k; k=k+'\n' if not k.endswith('\n') else k; open(os.path.expanduser('~/.ssh/deploy_key.pem'),'w').write(k); print('lines:',k.count('\n'))"
             chmod 600 ~/.ssh/deploy_key.pem
             head -1 ~/.ssh/deploy_key.pem
             tail -1 ~/.ssh/deploy_key.pem
