@@ -102,7 +102,7 @@ jobs:
           command: |
             # Write SSH key — handles literal \n stored in CircleCI env var
             mkdir -p ~/.ssh
-            printf '%s\n' "$EC2_SSH_KEY" > ~/.ssh/deploy_key.pem
+            printf '%s' "$EC2_SSH_KEY" | base64 --decode > ~/.ssh/deploy_key.pem
             chmod 600 ~/.ssh/deploy_key.pem
             echo "Key line count: $(wc -l < ~/.ssh/deploy_key.pem)"
             head -1 ~/.ssh/deploy_key.pem
