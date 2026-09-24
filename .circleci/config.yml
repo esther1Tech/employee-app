@@ -97,6 +97,10 @@ jobs:
       - run:
           name: Deploy to EC2
           command: |
+            echo "Deploying to $EC2_USER@$EC2_HOST"
+            SSH_KEY=$(ls ~/.ssh/id_rsa_* 2>/dev/null | head -1)
+            echo "Using SSH key: $SSH_KEY"
+
             cat > /tmp/deploy.sh \<<SCRIPT
             aws ecr get-login-password --region ${AWS_REGION} | docker login --username AWS --password-stdin ${ECR_REGISTRY}
             docker network inspect employee-network >/dev/null 2>&1 || docker network create employee-network
@@ -112,8 +116,8 @@ jobs:
             docker run -d --name frontend --restart unless-stopped --network employee-network -p 8080:80 ${ECR_REGISTRY}/employee-frontend:${FRONTEND_TAG}
             docker image prune -f
             SCRIPT
-            scp -o StrictHostKeyChecking=no -i ~/.ssh/id_rsa /tmp/deploy.sh $EC2_USER@$EC2_HOST:/tmp/deploy.sh
-            ssh -o StrictHostKeyChecking=no -i ~/.ssh/id_rsa $EC2_USER@$EC2_HOST "bash /tmp/deploy.sh"
+            scp -o StrictHostKeyChecking=no -i "$SSH_KEY" /tmp/deploy.sh $EC2_USER@$EC2_HOST:/tmp/deploy.sh
+            ssh -o StrictHostKeyChecking=no -i "$SSH_KEY" $EC2_USER@$EC2_HOST "bash /tmp/deploy.sh"
 
 # ── Workflows ──────────────────────────────────────────────────────────────────
 workflows:
