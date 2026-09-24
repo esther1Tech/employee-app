@@ -96,8 +96,16 @@ jobs:
           command: |
             # Write SSH key from environment variable
             mkdir -p ~/.ssh
-            printf "%b" "$EC2_SSH_KEY" > ~/.ssh/deploy_key.pem
+            python3 -c "
+import os, sys
+key = os.environ.get('EC2_SSH_KEY', '')
+key = key.replace('\\\\n', '\n')
+with open(os.path.expanduser('~/.ssh/deploy_key.pem'), 'w') as f:
+    f.write(key)
+"
             chmod 600 ~/.ssh/deploy_key.pem
+            echo "Key file size: $(wc -c < ~/.ssh/deploy_key.pem) bytes"
+            head -1 ~/.ssh/deploy_key.pem
 
             # Write deploy script to file without heredoc
             cat > /tmp/deploy.sh \<< 'ENDDEPLOY'
