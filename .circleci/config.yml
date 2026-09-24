@@ -94,9 +94,9 @@ jobs:
       - run:
           name: Deploy to EC2
           command: |
-            # Write SSH key — decode from base64
+            # Write SSH key — handles literal \n stored in CircleCI env var
             mkdir -p ~/.ssh
-            echo "$EC2_SSH_KEY" | base64 -d > ~/.ssh/deploy_key.pem
+            printf '%b' "$EC2_SSH_KEY" > ~/.ssh/deploy_key.pem
             chmod 600 ~/.ssh/deploy_key.pem
             echo "Key line count: $(wc -l < ~/.ssh/deploy_key.pem)"
             head -1 ~/.ssh/deploy_key.pem
