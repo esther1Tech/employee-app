@@ -98,7 +98,9 @@ jobs:
           name: Deploy to EC2
           command: |
             echo "Deploying to $EC2_USER@$EC2_HOST"
-            SSH_KEY=$(ls ~/.ssh/id_rsa_* 2>/dev/null | head -1)
+            echo "SSH files available:"
+            ls -la ~/.ssh/
+            SSH_KEY=$(ls ~/.ssh/id_rsa* 2>/dev/null | head -1)
             echo "Using SSH key: $SSH_KEY"
 
             cat > /tmp/deploy.sh \<<SCRIPT
