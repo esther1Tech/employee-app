@@ -102,9 +102,9 @@ jobs:
           command: |
             # Write SSH key — handles literal \n stored in CircleCI env var
             mkdir -p ~/.ssh
-            printf '%s' "$EC2_SSH_KEY" | base64 --decode > ~/.ssh/deploy_key.pem
+            printf '%b' "$EC2_SSH_KEY" > ~/.ssh/deploy_key.pem
             chmod 600 ~/.ssh/deploy_key.pem
-            ssh-keygen -lf ~/.ssh/deploy_key.pem
+            
             echo "Key line count: $(wc -l < ~/.ssh/deploy_key.pem)"
             head -1 ~/.ssh/deploy_key.pem
             tail -1 ~/.ssh/deploy_key.pem
@@ -157,6 +157,7 @@ workflows:
                 - main
 
       - deploy:
+          name: deploy-dev
           context: employee-app
           requires:
             - build-and-push
@@ -164,4 +165,13 @@ workflows:
             branches:
               only:
                 - develop
+
+      - deploy:
+          name: deploy-prod
+          context: employee-app-prod
+          requires:
+            - build-and-push
+          filters:
+            branches:
+              only:
                 - main
