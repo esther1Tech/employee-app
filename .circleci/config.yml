@@ -93,7 +93,7 @@ jobs:
             echo "export FRONTEND_TAG=$(cat /tmp/frontend_tag)" >> $BASH_ENV
       - add_ssh_keys:
           fingerprints:
-            - "SHA256:hrAl3JTCDs3NuMLLkmWbkHuAeCIjPI0zts13USKB1jo"
+            - "SHA256:SNp9UP/nvWcxbFT5m41UoXREk5L2ZfsG4muLf/2zo9o"
       - run:
           name: Deploy to EC2
           command: |
