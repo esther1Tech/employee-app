@@ -169,7 +169,9 @@ workflows:
 
       - deploy:
           name: deploy-prod
-          context: employee-app-prod
+          context: 
+          - employee-app
+          - employee-app-prod
           requires:
             - build-and-push
           filters:
