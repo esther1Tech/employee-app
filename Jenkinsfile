@@ -2,9 +2,11 @@ pipeline {
     agent any
 
     environment {
-        DOCKERHUB_BACKEND  = 'chafah/employee-backend'
-        DOCKERHUB_FRONTEND = 'chafah/employee-frontend'
-        IMAGE_TAG          = "build-${BUILD_NUMBER}"
+        AWS_REGION   = 'us-east-2'
+        ECR_REGISTRY = '038304770452.dkr.ecr.us-east-2.amazonaws.com'
+        ECR_BACKEND  = "${ECR_REGISTRY}/employee-backend"
+        ECR_FRONTEND = "${ECR_REGISTRY}/employee-frontend"
+        IMAGE_TAG    = "build-${BUILD_NUMBER}"
     }
 
     stages {
@@ -12,34 +14,32 @@ pipeline {
         stage('Test') {
             steps {
                 sh '''
-                    pip install -r backend/requirements.txt
+                    python3 -m pip install -r backend/requirements.txt
                     cd backend
-                    DATABASE_URL=sqlite:///test.db pytest -v
+                    DATABASE_URL=sqlite:///test.db python3 -m pytest -v
                 '''
             }
         }
 
         stage('Build & Push') {
             steps {
-                withCredentials([usernamePassword(
-                    credentialsId: 'dockerhub-credentials',
-                    usernameVariable: 'DOCKER_USER',
-                    passwordVariable: 'DOCKER_PASS'
-                )]) {
-                    sh '''
-                        echo "$DOCKER_PASS" | docker login -u "$DOCKER_USER" --password-stdin
+                sh '''
+                    echo "=== Logging in to AWS ECR ==="
+                    aws ecr get-login-password --region $AWS_REGION | \
+                        docker login --username AWS --password-stdin $ECR_REGISTRY
 
-                        docker build -t $DOCKERHUB_BACKEND:$IMAGE_TAG backend/
-                        docker push $DOCKERHUB_BACKEND:$IMAGE_TAG
-                        docker tag $DOCKERHUB_BACKEND:$IMAGE_TAG $DOCKERHUB_BACKEND:latest
-                        docker push $DOCKERHUB_BACKEND:latest
+                    echo "=== Building and pushing backend ==="
+                    docker build -t $ECR_BACKEND:$IMAGE_TAG backend/
+                    docker push $ECR_BACKEND:$IMAGE_TAG
+                    docker tag $ECR_BACKEND:$IMAGE_TAG $ECR_BACKEND:latest
+                    docker push $ECR_BACKEND:latest
 
-                        docker build -t $DOCKERHUB_FRONTEND:$IMAGE_TAG frontend/
-                        docker push $DOCKERHUB_FRONTEND:$IMAGE_TAG
-                        docker tag $DOCKERHUB_FRONTEND:$IMAGE_TAG $DOCKERHUB_FRONTEND:latest
-                        docker push $DOCKERHUB_FRONTEND:latest
-                    '''
-                }
+                    echo "=== Building and pushing frontend ==="
+                    docker build -t $ECR_FRONTEND:$IMAGE_TAG frontend/
+                    docker push $ECR_FRONTEND:$IMAGE_TAG
+                    docker tag $ECR_FRONTEND:$IMAGE_TAG $ECR_FRONTEND:latest
+                    docker push $ECR_FRONTEND:latest
+                '''
             }
         }
 
@@ -55,9 +55,12 @@ pipeline {
                     string(credentialsId: 'database-url', variable: 'DATABASE_URL')
                 ]) {
                     sh '''
-                        ssh -o StrictHostKeyChecking=no -i $SSH_KEY $SSH_USER@$EC2_HOST "
-                            docker pull $DOCKERHUB_BACKEND:$IMAGE_TAG
-                            docker pull $DOCKERHUB_FRONTEND:$IMAGE_TAG
+                        aws ecr get-login-password --region "$AWS_REGION" | \
+                        ssh -o StrictHostKeyChecking=no -i "$SSH_KEY" "$SSH_USER@$EC2_HOST" "
+                            set -e
+                            docker login --username AWS --password-stdin $ECR_REGISTRY
+                            docker pull $ECR_BACKEND:$IMAGE_TAG
+                            docker pull $ECR_FRONTEND:$IMAGE_TAG
 
                             docker network create employee-network 2>/dev/null || true
 
@@ -67,12 +70,12 @@ pipeline {
                               --network employee-network \
                               -p 5000:5000 \
                               -e DATABASE_URL=$DATABASE_URL \
-                              $DOCKERHUB_BACKEND:$IMAGE_TAG
+                              $ECR_BACKEND:$IMAGE_TAG
 
                             docker run -d --name frontend --restart unless-stopped \
                               --network employee-network \
                               -p 80:80 \
-                              $DOCKERHUB_FRONTEND:$IMAGE_TAG
+                              $ECR_FRONTEND:$IMAGE_TAG
                         "
                     '''
                 }
