@@ -63,6 +63,7 @@ pipeline {
                         ssh -o StrictHostKeyChecking=no -i "$SSH_KEY" "$SSH_USER@$EC2_HOST" "
                             set -e
                             IFS= read -r DATABASE_URL
+                            export DATABASE_URL
                             docker pull $ECR_BACKEND:$IMAGE_TAG
                             docker pull $ECR_FRONTEND:$IMAGE_TAG
 
@@ -73,7 +74,7 @@ pipeline {
                             docker run -d --name backend --restart unless-stopped \
                               --network employee-network \
                               -p 5000:5000 \
-                              -e DATABASE_URL=\"\$DATABASE_URL\" \
+                              -e DATABASE_URL \
                               $ECR_BACKEND:$IMAGE_TAG
 
                             docker run -d --name frontend --restart unless-stopped \
