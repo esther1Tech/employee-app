@@ -55,10 +55,16 @@ pipeline {
                     string(credentialsId: 'database-url', variable: 'DATABASE_URL')
                 ]) {
                     sh '''
-                        aws ecr get-login-password --region "$AWS_REGION" | \
+                        {
+                            aws ecr get-login-password --region "$AWS_REGION"
+                            printf '%s\n' "$DATABASE_URL"
+                        } | \
                         ssh -o StrictHostKeyChecking=no -i "$SSH_KEY" "$SSH_USER@$EC2_HOST" "
                             set -e
-                            docker login --username AWS --password-stdin $ECR_REGISTRY
+                            IFS= read -r ECR_PASSWORD
+                            printf '%s' \"\$ECR_PASSWORD\" | \
+                                docker login --username AWS --password-stdin $ECR_REGISTRY
+                            IFS= read -r DATABASE_URL
                             docker pull $ECR_BACKEND:$IMAGE_TAG
                             docker pull $ECR_FRONTEND:$IMAGE_TAG
 
@@ -69,7 +75,7 @@ pipeline {
                             docker run -d --name backend --restart unless-stopped \
                               --network employee-network \
                               -p 5000:5000 \
-                              -e DATABASE_URL=$DATABASE_URL \
+                              -e DATABASE_URL=\"\$DATABASE_URL\" \
                               $ECR_BACKEND:$IMAGE_TAG
 
                             docker run -d --name frontend --restart unless-stopped \
