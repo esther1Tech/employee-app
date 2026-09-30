@@ -68,6 +68,28 @@ pipeline {
                             docker pull $ECR_FRONTEND:$IMAGE_TAG
 
                             docker network create employee-network 2>/dev/null || true
+                            docker volume create employee-postgres-data >/dev/null
+
+                            if ! docker inspect db >/dev/null 2>&1; then
+                              docker run -d --name db --restart unless-stopped \
+                                --network employee-network \
+                                --mount source=employee-postgres-data,target=/var/lib/postgresql/data \
+                                -e POSTGRES_DB=employees \
+                                -e POSTGRES_USER=postgres \
+                                -e POSTGRES_PASSWORD=postgres \
+                                postgres:15
+                            else
+                              docker start db 2>/dev/null || true
+                              docker network connect employee-network db 2>/dev/null || true
+                            fi
+
+                            for attempt in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 26 27 28 29 30; do
+                              if docker exec db pg_isready -U postgres -d employees >/dev/null 2>&1; then
+                                break
+                              fi
+                              sleep 2
+                            done
+                            docker exec db pg_isready -U postgres -d employees
 
                             docker rm -f backend frontend 2>/dev/null || true
 
